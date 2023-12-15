@@ -1,3 +1,6 @@
+// Henry Jindrich Hajek, jh109@hw.ac.uk
+// SUPA C++ course, assessment 2
+
 #include <string>
 #include <vector>
 #include "gnuplot-iostream.h"
@@ -24,6 +27,9 @@ public:
   virtual void printInfo(); //Dump parameter info about the current function (Overridable)
   virtual double callFunction(double x); //Call the function with value x (Overridable)
 
+  // generate sequence of random numbers using this distribution:
+  std::vector<double> random_sequence(int length, double width);
+
   //Protected members can be accessed by child classes but not users
 protected:
   double m_RMin;
@@ -43,7 +49,53 @@ protected:
   std::vector< std::pair<double, double> > makeHist(std::vector<double> &points, int Nbins); //Helper function to turn data points into histogram with Nbins
   void checkPath(std::string outstring); //Helper function to ensure data and png paths are correct
   void generatePlot(Gnuplot &gp); 
+  // virtual double evaluate(double x); // return function value at given x
   
 private:
   double invxsquared(double x); //The default functional form
+};
+
+
+// just to test - x squared
+class x_sq : public FiniteFunction
+{
+  public:
+    
+    // using FiniteFunction::FiniteFunction;
+
+    // x_sq();
+
+    x_sq(double range_min, double range_max, std::string outfile); // : FiniteFunction(range_min, range_max, outfile){}; 
+
+    double callFunction(double x);
+
+};
+
+
+// 
+class Crystal : public FiniteFunction
+{
+  public:
+    
+    // Crystal();
+
+    Crystal(double range_min, double range_max, std::string outfile, double sigma, double alpha, double n_arg, double x_0); 
+
+    double callFunction(double x);
+
+  protected:
+
+    double s;
+    double a;
+    double n;
+    double x0;
+
+    
+    double A;
+    double B;
+    double C;
+    double D;
+    double N; 
+    
+
 };

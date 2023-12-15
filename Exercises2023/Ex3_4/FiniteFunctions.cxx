@@ -1,8 +1,13 @@
+// Henry Jindrich Hajek, jh109@hw.ac.uk
+// SUPA C++ course, assessment 2
+
 #include <iostream>
 #include <string>
 #include <vector>
 #include "FiniteFunctions.h"
 #include <filesystem> //To check extensions in a nice way
+#include <cmath>
+#include <random>
 
 #include "gnuplot-iostream.h" //Needed to produce plots (not part of the course) 
 
@@ -14,6 +19,7 @@ FiniteFunction::FiniteFunction(){
   m_RMax = 5.0;
   this->checkPath("DefaultFunction");
   m_Integral = NULL;
+  std::cout << "Empty constructor...\n";
 }
 
 //initialised constructor
@@ -22,6 +28,7 @@ FiniteFunction::FiniteFunction(double range_min, double range_max, std::string o
   m_RMax = range_max;
   m_Integral = NULL;
   this->checkPath(outfile); //Use provided string to name output files
+  std::cout << "Initialised constructor... " << outfile << std::endl;
 }
 
 //Plots are called in the destructor
@@ -54,7 +61,8 @@ double FiniteFunction::rangeMax() {return m_RMax;};
 ###################
 */ 
 double FiniteFunction::invxsquared(double x) {return 1/(1+x*x);};
-double FiniteFunction::callFunction(double x) {return this->invxsquared(x);}; //(overridable)
+double FiniteFunction::callFunction(double x) {return 0;}; //(overridable)
+
 
 /*
 ###################
@@ -63,8 +71,22 @@ Integration by hand (output needed to normalise function when plotting)
 */ 
 double FiniteFunction::integrate(int Ndiv){ //private
   //ToDo write an integrator
-  return -99;  
+
+  double cumul = 0; // cumulative integral sum
+  double x_curr = m_RMin; // current x
+  double dx = (m_RMax - m_RMin)/Ndiv; // step size
+  
+  // build integral sum:
+  for (int i = 0; i < Ndiv; i++)
+  {
+    // cumul += dx*this->evaluate(x_curr);
+    cumul += (this->callFunction(x_curr)*dx);
+    x_curr += dx; 
+  }
+
+  return cumul; 
 }
+
 double FiniteFunction::integral(int Ndiv) { //public
   if (Ndiv <= 0){
     std::cout << "Invalid number of divisions for integral, setting Ndiv to 1000" <<std::endl;
@@ -235,3 +257,124 @@ void FiniteFunction::generatePlot(Gnuplot &gp){
     gp.send1d(m_samples);
   }
 }
+
+// generate sequence random numbers according to this distribution:
+// arguments: sequence length, width of normal distribution used
+std::vector<double> FiniteFunction::random_sequence(int length, double width)
+{
+  // successful numbers counter
+  int successful = 0;
+
+  // output sequence container:
+  std::vector<double> output;
+
+  // declare auxiliary variables to avoid repeat allocation within loop:
+  double xi;
+  double y;
+  double A;
+  double denom;
+
+  // initialise random engine:
+    std::random_device rd;
+    std::mt19937 mtEngine(rd());
+
+  // generate first xi from uniform distribution:
+  std::uniform_real_distribution<double> uniform_range(m_RMin, m_RMax);
+  xi = uniform_range(mtEngine);
+
+  // random uniform distribution for drawin [0,1):
+  std::uniform_real_distribution<double> uniform_01(0, 1);
+  
+
+  // run until full sequence obtained:
+  while (successful<length)
+    {
+
+    // generate next y:
+    std::normal_distribution<double> normal(xi, width);
+    y = normal(mtEngine);
+
+
+    // calculate A:
+    A = this->callFunction(y);
+    
+    denom = this->callFunction(xi);
+
+    // choose new xi in the unlikely event that f(xi) = 0:
+    if (denom == 0)
+    {xi = uniform_range(mtEngine); continue;}
+    
+
+    A /= denom;
+
+    if (A < 1) {A = 1;}
+
+
+    // acceptance (if T<A):
+    if (uniform_01(mtEngine) < A)
+      {
+        output.push_back(y);
+        successful++;
+        xi = y;
+      }
+
+    else
+      {continue;}
+
+    }
+
+    return output;
+}
+
+
+
+x_sq::x_sq(double range_min, double range_max, std::string outfile) : FiniteFunction(range_min, range_max, outfile)
+
+  {
+    std::cout << "calling overloaded constructor...\n";
+  }
+
+// evaluate test function at x
+double x_sq::callFunction(double x)
+  {
+    return x*x;
+  }
+
+
+
+
+
+// Crystal Ball function constructor, given distribution parameters:
+Crystal::Crystal(double range_min, double range_max, std::string outfile, double sigma, double alpha, double n_arg, double x_0) : FiniteFunction(range_min, range_max, outfile)
+  {
+
+    
+
+    s = sigma;
+    a = alpha;
+    n = n_arg;
+    x0 = x_0;
+
+    A = pow( (n/fabs(a)) ,n) * exp(-1*a*a/2); 
+    B = n/fabs(a) - fabs(a);
+    C = n/fabs(a)/(n-1) * exp(-1*a*a/2);
+    D = sqrt(M_PI/2) * (1 + erf(fabs(a)/sqrt(2)));
+    N = 1/s/(C+D);
+
+  }
+
+// evaluate Crystal Ball at x:
+double Crystal::callFunction(double x)
+    {
+    
+    if (((x-x0)/s) < a)
+      {
+        return N*exp(-1*(x-x0)*(x-x0)/2/s/s);
+      }
+
+    else
+      {
+        return N*A*pow((B-(-(x-x0))/s), (-1*n));
+      }
+
+    }
